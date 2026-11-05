@@ -40,13 +40,12 @@ local CUSTOM_MATCH_HIDE = {
   "BackgroundBlur_75", "BG", "BG_Window_Base", "BG_Window_Base_Outline", "BG_Border_Pattern",
   "BG_Border_PatternCover", "PAT_PresetIcon", "TXT_Title_RuleEdit", "TXT_PresetName",
 }
--- Item Select and CrossWorld Select aren't used in a duel.
-local CUSTOM_MATCH_UNUSED = { "WBP_PartyRace_Sub_Option_Btn_ItemSwitch", "WBP_PartyRace_Sub_Option_Btn_TeavelCouseSwitch" }
+-- Item Select isn't shown: duels use the default items.
+local CUSTOM_MATCH_UNUSED = { "WBP_PartyRace_Sub_Option_Btn_ItemSwitch" }
 -- Move Custom Match's buttons and confirm bar up into the space the popup frame used.
 local OPTION_BUTTONS_OFFSET, CONFIRM_BAR_OFFSET = -270, -70
--- EUINavigation and EUINavigationRule values.
+-- EUINavigation values.
 local NAV_LEFT, NAV_RIGHT, NAV_UP, NAV_DOWN = 0, 1, 2, 3
-local NAV_RULE_STOP = 3
 
 local FADE_BLACK = 0
 -- FadeIn fades to black, FadeOut fades back in.
@@ -197,12 +196,13 @@ local function styleCustomMatch(w)
   local buttons, bar = core.child(w, "Horizonal_SubBtn"), core.child(w, "WBP_PartyRace_Sub_Option_Btn_OK")
   buttons:SetRenderTranslation({ X = 0, Y = OPTION_BUTTONS_OFFSET })
   bar:SetRenderTranslation({ X = 0, Y = CONFIRM_BAR_OFFSET })
-  -- Race Rules is the only button left, so navigation that led to the hidden ones goes to it or stops.
+  -- Navigation that led to the hidden Item Select goes to the buttons either side of it instead.
   local rules = core.child(w, "WBP_PartyRace_Sub_Option_Btn_RuleSetting")
+  local crossWorlds = core.child(w, "WBP_PartyRace_Sub_Option_Btn_TeavelCouseSwitch")
   bar:SetNavigationRuleExplicit(NAV_UP, rules)
   bar:SetNavigationRuleExplicit(NAV_DOWN, rules)
-  rules:SetNavigationRuleBase(NAV_LEFT, NAV_RULE_STOP)
-  rules:SetNavigationRuleBase(NAV_RIGHT, NAV_RULE_STOP)
+  rules:SetNavigationRuleExplicit(NAV_RIGHT, crossWorlds)
+  crossWorlds:SetNavigationRuleExplicit(NAV_LEFT, rules)
 end
 hook(CUSTOM_MATCH_CLASS .. ":Construct", function(ctx)
   if State.active then try("custom match layout", styleCustomMatch, ctx:get()) end
