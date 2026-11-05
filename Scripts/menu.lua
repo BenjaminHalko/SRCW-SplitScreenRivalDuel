@@ -149,17 +149,19 @@ local function forceDuelSettings()
   if not State.active then return end
   local r = core.RCDA()
   r:SetRaceSettingComSpeed(COMSPEED_NONE)
+  r:SetRacerCount(r:GetSelectedPlayerCount())
   r:SetRaceSettingGrouping(GROUPING_INDIVIDUAL)
   r:SetRaceSettingRaceCount(DUEL_RACE_COUNT)
   r:SetMaxRaceCount(DUEL_RACE_COUNT, true)
   r:SetDuelMode(true)
 end
-for _, fn in ipairs({ "SetCustomRaceSettingBP", "SetSelectedRaceParkPresetId" }) do
-  -- Deferred because these hooks run before the preset is applied.
-  hook("/Script/UNION.AppRaceConfigDataAccessor:" .. fn, function()
-    if State.active then ExecuteInGameThread(forceDuelSettings) end
-  end)
-end
+local RACE_CONFIG = "/Script/UNION.AppRaceConfigDataAccessor:"
+-- Straight after the custom settings are applied: the CPU racers are drawn right after that.
+core.hookAfter(RACE_CONFIG .. "SetCustomRaceSettingBP", forceDuelSettings)
+-- Deferred: this one is called before its preset is applied.
+hook(RACE_CONFIG .. "SetSelectedRaceParkPresetId", function()
+  if State.active then ExecuteInGameThread(forceDuelSettings) end
+end)
 
 -- Hide the Race Rules lines a duel doesn't use, whenever the screen sets up or updates them.
 local function tweakRuleScreen(scene)
