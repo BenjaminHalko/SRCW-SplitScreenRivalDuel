@@ -313,6 +313,18 @@ hook(CUSTOM_RULE_STATE .. "OnExitState", function()
   try("hub input", hubInput, false)
 end)
 
+-- Race Rules, CrossWorld Select and the final check open over Custom Match in the same state, and
+-- leaving for Customize Gadgets from one of them leaves its screen behind. So LB is off while one is
+-- open.
+hook(CUSTOM_RULE_STATE .. "OnPartyRaceConfirmDecision", function()
+  if State.active then try("hub input", hubInput, false) end
+end)
+for _, fn in ipairs({ "OnPartyRaceCustomFinalConfirmScene", "OnFinalCheckCencel" }) do
+  hook(CUSTOM_RULE_STATE .. fn, function()
+    if State.active then ExecuteInGameThread(function() try("hub input", hubInput, true) end) end
+  end)
+end
+
 -- Back: hold the popup's out animation on its first frame while fading to black, then let it play.
 hook(CUSTOM_RULE_STATE .. "OnFinalConfirmCancel", function()
   if not State.active then return end

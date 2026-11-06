@@ -1,4 +1,4 @@
-# SRCW: Split-Screen Rival Duel
+# Split-Screen Rival Duel
 
 Rival Duel for two players on one screen in Sonic Racing CrossWorlds.
 
