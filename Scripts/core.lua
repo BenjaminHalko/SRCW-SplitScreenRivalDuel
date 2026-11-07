@@ -79,10 +79,12 @@ function M.raceState(name)
   return "/Game/01_Union/Blueprint/Sequence/Race/State/" .. class .. "." .. class .. "_C:"
 end
 
--- Blueprint functions don't exist until their class is loaded, so failed hooks are retried whenever an
--- instance of the class is created. Each hook is only registered once.
+-- Blueprint functions don't exist until their class is loaded, so failed hooks are retried whenever
+-- an instance of the class is created. Each hook is only registered once, and a class stops being
+-- watched once all of its hooks are.
 local pendingHooks, watchedClasses = {}, {}
 local RF_DEFAULT_OR_TEMPLATE = 0x30 -- RF_ClassDefaultObject | RF_ArchetypeObject
+local function classOf(path) return path:match("^(/Game/.+):") end
 local function attachHooks()
   local still = {}
   for _, h in ipairs(pendingHooks) do
@@ -93,16 +95,27 @@ local function attachHooks()
   pendingHooks = still
 end
 
+local function hasPendingHooks(class)
+  for _, h in ipairs(pendingHooks) do
+    if classOf(h.path) == class then return true end
+  end
+  return false
+end
+
 -- For /Script/ functions pre runs before the call and post after. For blueprint functions pre already
 -- runs after.
 function M.hook(path, pre, post)
-  local class = path:match("^(/Game/.+):")
+  local class = classOf(path)
   pendingHooks[#pendingHooks + 1] = { path = path, pre = pre, post = post }
   attachHooks()
-  if class and not watchedClasses[class] then
+  if class and not watchedClasses[class] and hasPendingHooks(class) then
     watchedClasses[class] = true
     NotifyOnNewObject(class, function(o)
-      if #pendingHooks > 0 and not o:HasAnyFlags(RF_DEFAULT_OR_TEMPLATE) then attachHooks() end
+      if o:HasAnyFlags(RF_DEFAULT_OR_TEMPLATE) then return end
+      attachHooks()
+      if hasPendingHooks(class) then return end
+      watchedClasses[class] = nil
+      return true
     end)
   end
 end

@@ -37,7 +37,7 @@ local CENTRE = { Minimum = { X = 0.5, Y = 0.5 }, Maximum = { X = 0.5, Y = 0.5 } 
 local BUTTON_ANCHORS = { [0] = { X = 0.25, Y = 0.72 }, [1] = { X = 0.75, Y = 0.72 } }
 -- Duel Boost prompt parts that get shown and hidden.
 local BUTTON_PARTS = { "Overlay_Btn", "Overlay_Core", "BG_Light" }
-local PLAYER_GUIDES = { [0] = "WBP_Race_Sub_BtnGuide_P1", [1] = "WBP_Race_Sub_BtnGuide_P2" }
+local RANK_DISPLAYS = { [0] = "WBP_Race_HUD_Sub_Rank_P1", [1] = "WBP_Race_HUD_Sub_Rank_P2" }
 
 -- Z order above the race HUD.
 local PLAYER_SCREEN_Z = 20
@@ -136,8 +136,8 @@ local function fillDuelHud(hud, duel)
   end
   return {
     widget = duel, buttons = buttons, countdowns = countdowns,
-    guides = { [0] = child(hud, PLAYER_GUIDES[0]), [1] = child(hud, PLAYER_GUIDES[1]) },
-    shown = {}, allowed = {}, charged = {}, boosting = {}, finished = {}, rankShown = {},
+    ranks = { [0] = child(hud, RANK_DISPLAYS[0]), [1] = child(hud, RANK_DISPLAYS[1]) },
+    shown = {}, allowed = {}, charged = {}, boosting = {}, finished = {},
   }
 end
 
@@ -211,9 +211,11 @@ function M.updateButton(d, pci)
   if on then
     b:OnCharged()
     b.WidgetSwitcher_Btn:SetActiveWidget(b.WBP_Race_Sub_BtnGuide)
-    -- The game sets the button on the 2P HUD's own guides but not on these, so copy it over.
+    -- Set up like the game's own duel button: the labels for this player's controller and their duel
+    -- boost key.
     local guide = b.WBP_Race_Sub_BtnGuide
-    guide:SetDuelUltimateKey(d.guides[pci].BtnGuideBtn_DuelUltimate)
+    guide.PlayerControllerIndex = pci
+    guide:SetBtnText(pci)
     guide:DuelUltimateGuideOn(pci)
   else
     b.WBP_Race_Sub_BtnGuide:DuelUltimateGuideOff()
@@ -248,19 +250,20 @@ onDuelEvent("DuelUseItem", function(d, pci, item) d.widget:PlayItemUseCutIn(pci,
 onDuelEvent("FireDuelAttackItemHitInfo", function(d, info) d.widget:PlayItemHitCutIn(info) end)
 onDuelEvent("FireDuelAttackItemGuardInfo", function(d, info) d.widget:PlayItemGuardCutIn(info) end)
 
--- The value is from P1's side (negative when P1 is behind). Drop the minus sign; the colour already
--- shows who leads.
+-- The distance only shows while both players' rank displays do. The value is from P1's side
+-- (negative when P1 is behind); the minus sign is dropped since the colour already shows who leads.
 onDuelEvent("SetDuelDistanceToRival", function(d, pci, dist)
+  local both = d.ranks[0]:GetVisibility() ~= core.VIS_COLLAPSED
+    and d.ranks[1]:GetVisibility() ~= core.VIS_COLLAPSED
+  if d.distanceShown ~= both then
+    d.distanceShown = both
+    d.widget:SetEnableDistanceToRival(both)
+  end
   d.widget:SetDistanceToRival(pci, dist)
   if dist >= 0 then return end
   local text = d.widget.WidgetSwitcher_Distance:GetActiveWidget()
   local s = text:GetText():ToString()
   if s:sub(1, 1) == "-" then text:SetText(FText(s:sub(2))) end
-end)
--- Only show the distance while both rank displays are visible.
-M.onHudEvent("SetVisibilityRank", function(d, pci, on)
-  d.rankShown[pci] = on
-  d.widget:SetEnableDistanceToRival(d.rankShown[0] == true and d.rankShown[1] == true)
 end)
 -- The crown follows P1's rank.
 M.onHudEvent("SetRankIndex", function(d, pci, rank) if pci == 0 then d.widget:UpdateRank(rank) end end)
